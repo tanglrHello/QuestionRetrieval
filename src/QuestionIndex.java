@@ -1,3 +1,5 @@
+
+
 import java.io.BufferedReader;
 import java.io.Closeable;
 import java.io.File;
@@ -19,39 +21,19 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
 import org.apache.lucene.util.Version;
-
+import org.lionsoul.jcseg.analyzer.v5x.JcsegAnalyzer5X;
+import org.lionsoul.jcseg.tokenizer.core.JcsegTaskConfig;
 
 public class QuestionIndex {
 
-	public static void main(String[] args) throws Exception{
-		String inputFilePath = "data/CQs.txt";
-		String outputFilePath = "data/CQs.out.txt";
-		
-		// index for choice level retrieval
-		String indexDir = "indexDir/choice";
-		QuestionIndex indexer = null;
-		try{
-			indexer = new QuestionIndex(indexDir);
-			indexer.processRawData(inputFilePath, outputFilePath, "choice");
-			
-			int indexedChoiceNum = indexer.indexByChoice(outputFilePath);
-			System.out.println("Indexed choice number:"+indexedChoiceNum);
-		}catch (IOException e){
-			e.printStackTrace();
-		}finally{
-			indexer.close();
-		}
-		
-		//index for question level retrieval
-		//......
-		
-	}
-	
 	private IndexWriter indexWriter;
 	
 	public QuestionIndex(String indexDir) throws IOException{
 		Directory dir = FSDirectory.open(Paths.get(indexDir));
-		Analyzer analyzer = new StandardAnalyzer();
+		//Analyzer analyzer = new IKAnalyzer();
+		
+		Analyzer analyzer = new JcsegAnalyzer5X(JcsegTaskConfig.SIMPLE_MODE);  
+		
 		IndexWriterConfig iwc = new IndexWriterConfig(analyzer);
 		indexWriter = new IndexWriter(dir, iwc);
 	}
@@ -191,5 +173,8 @@ public class QuestionIndex {
 		return doc;
 	}
 	
+	public void clearIndex() throws IOException{
+		indexWriter.deleteAll();
+	}
 	
 }

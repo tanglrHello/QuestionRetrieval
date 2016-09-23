@@ -23,19 +23,19 @@ import org.lionsoul.jcseg.tokenizer.core.JcsegTaskConfig;
 
 
 public class QuestionSearch {
-	
+	private Directory dir;
 	private IndexReader reader;
 	private IndexSearcher searcher;
 	
 	public QuestionSearch(String indexDir) throws IOException{
-		Directory dir = FSDirectory.open(Paths.get(indexDir));
-		
+		dir = FSDirectory.open(Paths.get(indexDir));
 		reader = DirectoryReader.open(dir);
 		searcher = new IndexSearcher(reader);
 	}
 	
 	public void close() throws IOException{
 		reader.close();
+		dir.close();
 	}
 	
 	public ArrayList<Document> search(String method, String querystr) throws IOException{
@@ -46,6 +46,14 @@ public class QuestionSearch {
 		// choice level search
 		if (method.equals("choice")){
 			Query query = queryBuilder.createBooleanQuery("choiceContent", querystr); 
+			TopDocs hits = searcher.search(query, 10);
+			
+			for (ScoreDoc scoreDoc : hits.scoreDocs){
+				Document doc = searcher.doc(scoreDoc.doc);
+				res.add(doc);
+			}
+		}else{
+			Query query = queryBuilder.createBooleanQuery("questionContent", querystr); 
 			TopDocs hits = searcher.search(query, 10);
 			
 			for (ScoreDoc scoreDoc : hits.scoreDocs){

@@ -7,6 +7,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 
 import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.standard.StandardAnalyzer;
@@ -95,8 +96,20 @@ public class QuestionIndex {
 					
 				// output for question level retrieval
 				}else if (method.equals("question")){
-					
-				}	
+					writer.write(fields[qid]+"\t");
+					writer.write(fields[bgtext]+"\t");
+					writer.write(fields[qtext]+"\t");
+					writer.write(fields[isMulti]+"\t");
+					for (int i=0;i<4;i++){
+						writer.write(fields[choiceStart+i]+"\t");
+					}
+					for (int i=0;i<9;i++){
+						writer.write(fields[smallChoiceStart+i]+"\t");
+					}
+					writer.write(fields[pyear]+"\t");
+					writer.write(fields[ptype]+"\t");
+					writer.write(fields[pdesc]+"\r\n");
+				}
 			}
 			System.out.println("process_raw_data() complete.");
 		}catch(IOException e){
@@ -121,8 +134,8 @@ public class QuestionIndex {
 
 	// index data for choice level retrieval
 	// return the indexed choice number
-	public int indexByChoice(String choiceDataFilePath) throws IOException{
-		int choice_num=0;
+	public int index(String choiceDataFilePath, String method) throws IOException{
+		int indexed_num=0;
 		
 		File datafile = new File(choiceDataFilePath);
 		BufferedReader reader = null;
@@ -131,21 +144,16 @@ public class QuestionIndex {
 		
 		while ((rowstr = reader.readLine())!=null){
 			String fields[] = rowstr.split("\t");
-			Document doc = getDocument(fields, "choice");
+			Document doc = getDocument(fields, method);
 			indexWriter.addDocument(doc);
-			choice_num++;
+			indexed_num++;
 		}
 		
 		reader.close();
-		
-		return choice_num;
+		return indexed_num;
 	}
 	
-	// index data for question level retrieval
-	// return the indexed question number 
-	public int indexByQuestion(String questionDataFilePath) {
-		return 0;
-	}
+	
 	
 	// transform string data into Document object (for both choice/question level retrieval)
 	public Document getDocument(String[] fields, String method){
@@ -167,7 +175,44 @@ public class QuestionIndex {
 			doc.add(new StringField("pdesc", fields[pdesc], Field.Store.YES));
 			
 		}else if (method.equals("question")){
+			int qid = 0;
+			int bgtext = 1;
+			int qtext = 2;
+			int isMulti = 3;
+			int choiceStart = 4;
+			int smallChoiceStart = 8;
+			int pyear = 17;
+			int ptype = 18;
+			int pdesc = 19;
 			
+			doc = new Document();
+			doc.add(new StringField("qid",fields[qid],Field.Store.YES));
+			doc.add(new TextField("bgtext", fields[bgtext], Field.Store.YES));
+			
+			String qtextStr = fields[qtext];
+			ArrayList<String> choices = new ArrayList<String>();
+			ArrayList<String> smallChoices = new ArrayList<String>();
+			boolean isMulti_bool = false;
+			
+			if (fields[isMulti].equals("0")){
+				for (int i=0;i<4;i++){
+					choices.add(fields[choiceStart+i]);
+				}
+			}else{
+				for (int i=0;i<9;i++){
+					if (fields[smallChoiceStart+i].length()>0){
+						smallChoices.add(fields[smallChoiceStart+i].substring(1));
+					}
+				}
+				isMulti_bool = true;
+			}
+			
+			Question q = new Question(qtextStr, isMulti_bool, choices, smallChoices);
+			doc.add(new TextField("questionContent", q.encodeForDocument(), Field.Store.YES));
+			
+			doc.add(new StringField("pyear", fields[pyear], Field.Store.YES));
+			doc.add(new StringField("ptype", fields[ptype], Field.Store.YES));
+			doc.add(new StringField("pdesc", fields[pdesc], Field.Store.YES));
 		}
 		
 		return doc;
